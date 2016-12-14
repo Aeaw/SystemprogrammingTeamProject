@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <time.h>
-#include <pthread.h>
+#include <fcntl.h>
 
 #define MESSAGE "o"
 #define BLANK "    "
@@ -25,13 +25,17 @@ int dir;
 int count=0; // 몇개가 떨어졌는지 세는거
 char str[5];
 int k;
+int inputnumber;
 
 struct winsize wbuf; // 콘솔창 크기 구할때 쓰는 구조체
 struct temp t[TEMP_ARRAY];
 
 void gameover();
+void enable_signals();
 void set_cr_noecho_mode();
 int set_ticker(int);
+void input();
+
 
 int main()
 {
@@ -41,11 +45,7 @@ int main()
 	char c;
 	void move_msg(int);
 
-	pthread_t t1;
-
 	void *get_msg(void *);
-
-	pthread_create(&t1, NULL, get_msg, NULL);
 
 	srand(time(NULL)); // 랜덤 난수 생성
 	ioctl(0,TIOCGWINSZ, &wbuf); 
@@ -83,6 +83,9 @@ int main()
 	dir = 1;
 	delay = 400;
 
+	signal(SIGIO,input);
+	enable_signals();
+
 	move(t[0].row,t[0].col); // 처음에 하나 떨어지는 공 설정
 	addstr(t[0].fall);
 	signal(SIGALRM, move_msg);
@@ -90,6 +93,7 @@ int main()
 
 	while(1)
 	{
+		pause();
 		/*fgets(str,sizeof(str),stdin);
 		//str[strlen(str)-1] = '\0';
 
@@ -109,7 +113,6 @@ int main()
 			
 	}
 	endwin();
-	pthread_join(t1,NULL);
 	return 0;
 }
 
@@ -170,21 +173,24 @@ void set_cr_noecho_mode()
 	tcsetattr(0, TCSANOW, &ttystate);
 }
 
-void *get_msg(void *m)
+void input()
 {
-	int i=0;
-	int j;
+	char c;
 
-	while(1)
+	for(inputnumber=0; inputnumber<4; inputnumber++)
 	{
-		str[i] = getchar();
+		str[inputnumber] = getchar();
 		mvaddstr(wbuf.ws_row-1,0,str);
-		i++;
-		if(i==4) {
-			str[i] = '\0';
-			i=0;
-		}
 	}
-	return NULL;
+	return ;
 
+}
+
+void enable_signals()
+{
+	int flags;
+
+	fcntl(0, F_SETOWN, getpid());
+	flags = fcntl(0, F_GETFL);
+	fcntl(0, F_SETFL,(flags | O_ASYNC));
 }
