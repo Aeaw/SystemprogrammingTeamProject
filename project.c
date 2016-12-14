@@ -12,6 +12,9 @@
 #define MESSAGE "o"
 #define BLANK "    "
 #define TEMP_ARRAY 30 // 임시로 만든 array 개수
+#define MOUSE1 "@_____@"
+#define MOUSE2 "(* . *)"
+
 
 struct temp // 구조체 생성해서 하나씩 떨어지는값을 각각 설정, del 은 지워졋는지 안지워졋는지 여부
 {
@@ -52,7 +55,7 @@ int main()
 
 	for(i=0;i<TEMP_ARRAY;i++) // 맨위부터떨어지무로 row값 0, col 의 값은 난수로 설정해서 어디서 떨어지는 모르게 설정
 	{
-		t[i].del = 0; t[i].row = 0; t[i].col = rand()%wbuf.ws_col;
+		t[i].del = 0; t[i].row = 0; t[i].col = rand()%(wbuf.ws_col-3);
 		t[i].fall = (char *)malloc(sizeof(char)*5);
 		for(j=0;j<4;j++)
 		{
@@ -77,7 +80,7 @@ int main()
 	}
 
 	initscr();
-	//set_cr_noecho_mode();
+	set_cr_noecho_mode();
 	clear();
 
 	dir = 1;
@@ -85,6 +88,9 @@ int main()
 
 	signal(SIGIO,input);
 	enable_signals();
+
+	mvaddstr(wbuf.ws_row-2,wbuf.ws_col/2,MOUSE1);
+	mvaddstr(wbuf.ws_row-1,wbuf.ws_col/2,MOUSE2);
 
 	move(t[0].row,t[0].col); // 처음에 하나 떨어지는 공 설정
 	addstr(t[0].fall);
@@ -119,6 +125,7 @@ int main()
 void move_msg(int signum)
 {
 	int random,i,j;
+	char c[5];
 
 	signal(SIGALRM, move_msg);
 	random = (rand()%3)+1; // 약간의 텀을 두고 떨어지게 설정
@@ -142,10 +149,8 @@ void move_msg(int signum)
 			move(t[i].row,t[i].col);
 			addstr(BLANK);
 			t[i].row += dir;
-			if(t[i].row == wbuf.ws_row) { 
-				//gameover();
-				endwin();
-				exit(0);
+			if(t[i].row == wbuf.ws_row-2) { 
+				gameover();
 			}
 			move(t[i].row,t[i].col);
 			addstr(t[i].fall);
@@ -193,4 +198,18 @@ void enable_signals()
 	fcntl(0, F_SETOWN, getpid());
 	flags = fcntl(0, F_GETFL);
 	fcntl(0, F_SETFL,(flags | O_ASYNC));
+}
+
+void gameover()
+{
+	signal(SIGALRM, SIG_IGN);
+	clear();
+	
+	mvaddstr(wbuf.ws_row/2,wbuf.ws_col/2,"Game over TT");
+	refresh();
+	sleep(3);
+
+	endwin();
+	exit(0);
+
 }
