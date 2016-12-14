@@ -22,6 +22,9 @@ struct temp // 구조체 생성해서 하나씩 떨어지는값을 각각 설정
 
 int dir;
 int count=0; // 몇개가 떨어졌는지 세는거
+char str[5];
+int k;
+
 struct winsize wbuf; // 콘솔창 크기 구할때 쓰는 구조체
 struct temp t[TEMP_ARRAY];
 
@@ -80,7 +83,16 @@ int main()
 
 	while(1)
 	{
-		
+		fgets(str,sizeof(str),stdin);
+		//str[strlen(str)-1] = '\0';
+
+	
+			
+		if(k==0) {
+			mvaddstr(wbuf.ws_row-1,0,"Wrong!");
+		}
+		else
+			mvaddstr(wbuf.ws_row-1,0,"      ");
 
 		/*for(i=0;i<=count; i++)
 			if(t[i].row == wbuf.ws_row) { // 만약 어떤 거라도 바닥에 떨어지게되면 프로그램 종료
@@ -104,6 +116,17 @@ void move_msg(int signum)
 			count++;
 	}
 	for(i=0;i<count;i++) {
+		for(j=0;j<count;j++) {
+			if(strcmp(t[j].fall,str) == 0 && t[j].del == 0)
+			{
+				mvaddstr(t[j].row,t[j].col,BLANK);
+				t[j].del = 1;
+				k=1;
+			}
+
+		}
+
+
 		if(t[i].del == 0) { // 삭제 안됫으면 ( 삭제 구현시 수정 필요)
 			move(t[i].row,t[i].col);
 			addstr(BLANK);
