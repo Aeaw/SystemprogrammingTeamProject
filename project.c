@@ -9,11 +9,12 @@
 #include <time.h>
 
 #define MESSAGE "o"
-#define BLANK " "
+#define BLANK "    "
 #define TEMP_ARRAY 30 // 임시로 만든 array 개수
 
 struct temp // 구조체 생성해서 하나씩 떨어지는값을 각각 설정, del 은 지워졋는지 안지워졋는지 여부
 {
+	char *fall;
 	int del; // 0 = 삭제안됨, 1 = 삭제됨
 	int row;
 	int col;
@@ -24,14 +25,15 @@ int count=0; // 몇개가 떨어졌는지 세는거
 struct winsize wbuf; // 콘솔창 크기 구할때 쓰는 구조체
 struct temp t[TEMP_ARRAY];
 
-
+void gameover();
 void set_cr_noecho_mode();
 int set_ticker(int);
 
 int main()
 {
 	int delay;
-	int i;
+	int i,j;
+	int n;
 	char c;
 	void move_msg(int);
 
@@ -41,6 +43,27 @@ int main()
 	for(i=0;i<TEMP_ARRAY;i++) // 맨위부터떨어지무로 row값 0, col 의 값은 난수로 설정해서 어디서 떨어지는 모르게 설정
 	{
 		t[i].del = 0; t[i].row = 0; t[i].col = rand()%wbuf.ws_col;
+		t[i].fall = (char *)malloc(sizeof(char)*5);
+		for(j=0;j<4;j++)
+		{
+			n = rand()%4;
+			switch(n)
+			{
+				case 0:
+					t[i].fall[j] = 'w';
+					break;
+				case 1:
+					t[i].fall[j] = 'a';
+					break;
+				case 2:
+					t[i].fall[j] = 's';
+					break;
+				case 3:
+					t[i].fall[j] = 'd';
+					break;
+			}
+		}
+
 	}
 
 	initscr();
@@ -51,17 +74,19 @@ int main()
 	delay = 400;
 
 	move(t[0].row,t[0].col); // 처음에 하나 떨어지는 공 설정
-	addstr(MESSAGE);
+	addstr(t[0].fall);
 	signal(SIGALRM, move_msg);
 	set_ticker(delay);
 
 	while(1)
 	{
-		for(i=0;i<=count; i++)
+		
+
+		/*for(i=0;i<=count; i++)
 			if(t[i].row == wbuf.ws_row) { // 만약 어떤 거라도 바닥에 떨어지게되면 프로그램 종료
 				endwin();
 				return 0;
-			}
+			}*/
 			
 	}
 	endwin();
@@ -70,7 +95,7 @@ int main()
 
 void move_msg(int signum)
 {
-	int random,i;
+	int random,i,j;
 
 	signal(SIGALRM, move_msg);
 	random = (rand()%3)+1; // 약간의 텀을 두고 떨어지게 설정
@@ -78,16 +103,21 @@ void move_msg(int signum)
 		if(count != TEMP_ARRAY)
 			count++;
 	}
-	for(i=0;i<count;i++)
+	for(i=0;i<count;i++) {
 		if(t[i].del == 0) { // 삭제 안됫으면 ( 삭제 구현시 수정 필요)
 			move(t[i].row,t[i].col);
 			addstr(BLANK);
 			t[i].row += dir;
+			if(t[i].row == wbuf.ws_row) { 
+				//gameover();
+				endwin();
+				exit(0);
+			}
 			move(t[i].row,t[i].col);
-			addstr(MESSAGE);
+			addstr(t[i].fall);
 			refresh();
 		}
-	
+	}
 	/*signal(SIGALRM, move_msg);
 	move(row, col);
 	addstr(BLANK);
