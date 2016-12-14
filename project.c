@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <time.h>
+#include <pthread.h>
 
 #define MESSAGE "o"
 #define BLANK "    "
@@ -39,6 +40,12 @@ int main()
 	int n;
 	char c;
 	void move_msg(int);
+
+	pthread_t t1;
+
+	void *get_msg(void *);
+
+	pthread_create(&t1, NULL, get_msg, NULL);
 
 	srand(time(NULL)); // 랜덤 난수 생성
 	ioctl(0,TIOCGWINSZ, &wbuf); 
@@ -83,7 +90,7 @@ int main()
 
 	while(1)
 	{
-		fgets(str,sizeof(str),stdin);
+		/*fgets(str,sizeof(str),stdin);
 		//str[strlen(str)-1] = '\0';
 
 	
@@ -92,7 +99,7 @@ int main()
 			mvaddstr(wbuf.ws_row-1,0,"Wrong!");
 		}
 		else
-			mvaddstr(wbuf.ws_row-1,0,"      ");
+			mvaddstr(wbuf.ws_row-1,0,"      ");*/
 
 		/*for(i=0;i<=count; i++)
 			if(t[i].row == wbuf.ws_row) { // 만약 어떤 거라도 바닥에 떨어지게되면 프로그램 종료
@@ -102,6 +109,7 @@ int main()
 			
 	}
 	endwin();
+	pthread_join(t1,NULL);
 	return 0;
 }
 
@@ -162,4 +170,21 @@ void set_cr_noecho_mode()
 	tcsetattr(0, TCSANOW, &ttystate);
 }
 
+void *get_msg(void *m)
+{
+	int i=0;
+	int j;
 
+	while(1)
+	{
+		str[i] = getchar();
+		mvaddstr(wbuf.ws_row-1,0,str);
+		i++;
+		if(i==4) {
+			str[i] = '\0';
+			i=0;
+		}
+	}
+	return NULL;
+
+}
