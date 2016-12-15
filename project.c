@@ -1,3 +1,10 @@
+/*
+	시프 팀 기말 프로젝트 
+	작동원리 : 쓰레드 구현해서 메인 쓰레드는 SIGALRM 시그널을 돌면서 서브 쓰레드가 끝나기를 기다리고
+	서브 쓰레드는 getchar() 함수로 계속 문자열을 받으면서 위에서 떨어지는 문자열을 제거
+	만약 레벨별로 일정한 개수의 문자열을 제거하면 다음 스테이지로 넘어가게됨
+   */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <curses.h>
@@ -10,7 +17,6 @@
 #include <fcntl.h>
 #include <pthread.h>
 
-#define MESSAGE "o"
 #define BLANK "    "
 #define NUMBER 50
 #define MOUSE1 "@_____@"
@@ -44,8 +50,6 @@ void input();
 void nextlevel();
 void gameclear();
 void gamestart(int);
-
-pthread_t t1;
 
 int main()
 {
@@ -104,8 +108,26 @@ void gamestart(int level)
 	clear();
 	refresh();
 	dir = 1;
-	delay = 400;
 	count = 0;
+	switch(level) // 레벨별로 떨어지는 속도 다르게 설정
+	{
+		case 1:
+			delay = 500;
+			break;
+		case 2:
+			delay = 450;
+			break;
+		case 3:
+			delay = 400;
+			break;
+		case 4:
+			delay = 300;
+			break;
+		case 5:
+			delay = 200;
+			break;
+	}
+
 
 	strindex = 0;
 
@@ -126,14 +148,14 @@ void move_msg(int signum)
 	char c[5];
 
 	signal(SIGALRM, move_msg);
-	random = (rand()%4)+1; // 약간의 텀을 두고 떨어지게 설정
-	if(random != 1) { // 떨어지는 확률은 66% 만약 random의 값이 1 이아니면 count의 개수를 늘려서 하나더 떨어지게 만듬
+	random = (rand()%3)+1; // 약간의 텀을 두고 떨어지게 설정
+	if(random == 1) { // 떨어지는 확률은 33% 만약 random의 값이 1 이면 count의 개수를 늘려서 하나더 떨어지게 만듬
 		if(count != NUMBER)
 			count++;
 	}
 	for(i=0;i<count;i++) {
 		for(j=0;j<count;j++) {
-			if(strcmp(t[j].fall,str) == 0 && t[j].del == 0)
+			if(strcmp(t[j].fall,str) == 0 && t[j].del == 0) // 삭제 코드
 			{
 				mvaddstr(t[j].row,t[j].col,BLANK);
 				t[j].del = 1;
@@ -143,8 +165,7 @@ void move_msg(int signum)
 
 		}
 
-
-		if(t[i].del == 0) { // 삭제 안됫으면 ( 삭제 구현시 수정 필요)
+		if(t[i].del == 0) { // 떨어지는 코드, 만약 맨 아래까지 떨어지면 gameover
 			move(t[i].row,t[i].col);
 			addstr(BLANK);
 			t[i].row += dir;
@@ -156,14 +177,6 @@ void move_msg(int signum)
 			refresh();
 		}
 	}
-	/*signal(SIGALRM, move_msg);
-	move(row, col);
-	addstr(BLANK);
-	row += dir;
-	move(row,col);
-	addstr(MESSAGE);
-	refresh();
-	*/
 }
 
 void set_cr_noecho_mode()
@@ -177,7 +190,7 @@ void set_cr_noecho_mode()
 	tcsetattr(0, TCSANOW, &ttystate);
 }
 
-void *get_msg(void *m)
+void *get_msg(void *m) // 쓰레드 이용해서 구현 레벨 별로 없애야하는 글자수를 다르게 해서 클리어 조건 다르게 설정
 {
 	while(1)
 	{
@@ -188,7 +201,36 @@ void *get_msg(void *m)
 			str[strindex] = '\0';
 			strindex=0;
 		}
-		
+		switch(level) // 레벨별 클리어 개수 설정
+		{
+			case 1:
+				if(clear1 > 15) {
+					nextlevel();
+					return NULL;
+				}
+			case 2:
+				if(clear1 > 20) {
+					nextlevel();
+					return NULL;
+				}
+			case 3:
+				if(clear1 > 25) {
+					nextlevel();
+					return NULL;
+				}
+			case 4:
+				if(clear1 > 35) {
+					nextlevel();
+					return NULL;
+				}
+			case 5:
+				if(clear1 > 45) {
+					gameclear();
+					return NULL;
+				}
+
+
+		}
 	}
 
 }
@@ -216,7 +258,7 @@ void nextlevel()
 	clear();
 	
 	level++;
-	mvaddstr(wbuf.ws_row/2,wbuf.ws_col/2-5, "3 second later Next level strat!");
+	mvaddstr(wbuf.ws_row/2,wbuf.ws_col/2-10, "3 second later Next level strat!");
 	refresh();
 	sleep(3);
 
