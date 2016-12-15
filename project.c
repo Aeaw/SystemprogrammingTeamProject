@@ -22,6 +22,9 @@
 #define MOUSE1 "@_____@"
 #define MOUSE2 "(* . *)"
 
+#define CAT1 "A______A   "
+#define CAT2 "<o - o *>~~"
+
 struct temp // 구조체 생성해서 하나씩 떨어지는값을 각각 설정, del 은 지워졋는지 안지워졋는지 여부
 {
 	char *fall;
@@ -58,7 +61,7 @@ int main()
 	srand(time(NULL));
 	ioctl(0,TIOCGWINSZ, &wbuf);
 
-	nextlevel();
+	firstlevelstart();
 }
 
 
@@ -133,6 +136,8 @@ void gamestart(int level)
 
 	mvaddstr(wbuf.ws_row-2,wbuf.ws_col/2,MOUSE1);
 	mvaddstr(wbuf.ws_row-1,wbuf.ws_col/2,MOUSE2);
+	mvaddstr(1,wbuf.ws_col/2,CAT1);
+	mvaddstr(2,wbuf.ws_col/2,CAT2);
 
 	signal(SIGALRM, move_msg);
 	set_ticker(delay);
@@ -157,7 +162,7 @@ void move_msg(int signum)
 		for(j=0;j<count;j++) {
 			if(strcmp(t[j].fall,str) == 0 && t[j].del == 0) // 삭제 코드
 			{
-				mvaddstr(t[j].row,t[j].col,BLANK);
+				mvaddstr(t[j].row+3,t[j].col,BLANK);
 				t[j].del = 1;
 				k=1;
 				clear1++;
@@ -166,13 +171,13 @@ void move_msg(int signum)
 		}
 
 		if(t[i].del == 0) { // 떨어지는 코드, 만약 맨 아래까지 떨어지면 gameover
-			move(t[i].row,t[i].col);
+			move(t[i].row+3,t[i].col);
 			addstr(BLANK);
 			t[i].row += dir;
-			if(t[i].row == wbuf.ws_row-2) { 
+			if(t[i].row == wbuf.ws_row-5) { 
 				gameover();
 			}
-			move(t[i].row,t[i].col);
+			move(t[i].row+3,t[i].col);
 			addstr(t[i].fall);
 			refresh();
 		}
@@ -195,8 +200,14 @@ void *get_msg(void *m) // 쓰레드 이용해서 구현 레벨 별로 없애야�
 	while(1)
 	{
 		str[strindex] = getchar();
-		mvaddstr(wbuf.ws_row-1,0,str);
-		strindex++;
+		mvaddstr(wbuf.ws_row-1,0,"CURRENT INPUT : ");
+		mvaddstr(wbuf.ws_row-1,15,str);
+		if (str[strindex]=='b' && strindex > 0)//backspace
+		{
+			strindex--;
+		}
+		else
+			strindex++;
 		if(strindex==4) {
 			str[strindex] = '\0';
 			strindex=0;
@@ -240,7 +251,7 @@ void gameover()
 	signal(SIGALRM, SIG_IGN);
 	clear();
 	
-	mvaddstr(wbuf.ws_row/2,wbuf.ws_col/2,"Game over TT");
+	mvaddstr(wbuf.ws_row/2,wbuf.ws_col/2-10,"~(%:> Game over <:3)~");
 	refresh();
 	sleep(3);
 
@@ -258,7 +269,7 @@ void nextlevel()
 	clear();
 	
 	level++;
-	mvaddstr(wbuf.ws_row/2,wbuf.ws_col/2-10, "3 second later Next level strat!");
+	mvaddstr(wbuf.ws_row/2,wbuf.ws_col/2-10, "3 second later Next level start!");
 	refresh();
 	sleep(3);
 
@@ -278,4 +289,23 @@ void gameclear()
 
 	endwin();
 	exit(0);
+}
+
+void firstlevelstart()
+{
+	int i;
+	signal(SIGALRM, SIG_IGN);
+	clear1 = 0;
+
+	clear();
+	
+	level++;
+	mvaddstr(wbuf.ws_row/2,wbuf.ws_col/2-10, "Welcome To CATCHCATS!");
+	mvaddstr(wbuf.ws_row/2+1,wbuf.ws_col/2-10, "After 3s, GAME START!");
+	refresh();
+	sleep(3);
+
+	strindex = 0;	
+	gamestart(level);
+
 }
