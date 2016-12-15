@@ -8,13 +8,13 @@
 #include <sys/ioctl.h>
 #include <time.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 #define MESSAGE "o"
 #define BLANK "    "
-#define TEMP_ARRAY 30 // 임시로 만든 array 개수
+#define NUMBER 50
 #define MOUSE1 "@_____@"
 #define MOUSE2 "(* . *)"
-
 
 struct temp // 구조체 생성해서 하나씩 떨어지는값을 각각 설정, del 은 지워졋는지 안지워졋는지 여부
 {
@@ -29,18 +29,36 @@ int count=0; // 몇개가 떨어졌는지 세는거
 char str[5];
 int k;
 int inputnumber;
+int level = 0;
+int clear1 = 0;
+int strindex;
 
 struct winsize wbuf; // 콘솔창 크기 구할때 쓰는 구조체
-struct temp t[TEMP_ARRAY];
+struct temp *t;
 
 void gameover();
 void enable_signals();
 void set_cr_noecho_mode();
 int set_ticker(int);
 void input();
+void nextlevel();
+void gameclear();
+void gamestart(int);
 
+pthread_t t1;
 
 int main()
+{
+	initscr();
+	set_cr_noecho_mode();
+	srand(time(NULL));
+	ioctl(0,TIOCGWINSZ, &wbuf);
+
+	nextlevel();
+}
+
+
+void gamestart(int level)
 {
 	int delay;
 	int i,j;
@@ -48,12 +66,15 @@ int main()
 	char c;
 	void move_msg(int);
 
+	pthread_t t1;
+
 	void *get_msg(void *);
 
-	srand(time(NULL)); // 랜덤 난수 생성
-	ioctl(0,TIOCGWINSZ, &wbuf); 
+	t = (struct temp *)malloc(sizeof(struct temp)*NUMBER);
 
-	for(i=0;i<TEMP_ARRAY;i++) // 맨위부터떨어지무로 row값 0, col 의 값은 난수로 설정해서 어디서 떨어지는 모르게 설정
+	pthread_create(&t1, NULL, get_msg, NULL);
+
+	for(i=0;i<NUMBER;i++) // 맨위부터떨어지무로 row값 0, col 의 값은 난수로 설정해서 어디서 떨어지는 모르게 설정
 	{
 		t[i].del = 0; t[i].row = 0; t[i].col = rand()%(wbuf.ws_col-3);
 		t[i].fall = (char *)malloc(sizeof(char)*5);
@@ -76,50 +97,27 @@ int main()
 					break;
 			}
 		}
+		t[i].fall[4] = '\0';
 
 	}
 
-	initscr();
-	set_cr_noecho_mode();
 	clear();
-
+	refresh();
 	dir = 1;
 	delay = 400;
+	count = 0;
 
-	signal(SIGIO,input);
-	enable_signals();
+	strindex = 0;
 
 	mvaddstr(wbuf.ws_row-2,wbuf.ws_col/2,MOUSE1);
 	mvaddstr(wbuf.ws_row-1,wbuf.ws_col/2,MOUSE2);
 
-	move(t[0].row,t[0].col); // 처음에 하나 떨어지는 공 설정
-	addstr(t[0].fall);
 	signal(SIGALRM, move_msg);
 	set_ticker(delay);
 
-	while(1)
-	{
-		pause();
-		/*fgets(str,sizeof(str),stdin);
-		//str[strlen(str)-1] = '\0';
-
-	
-			
-		if(k==0) {
-			mvaddstr(wbuf.ws_row-1,0,"Wrong!");
-		}
-		else
-			mvaddstr(wbuf.ws_row-1,0,"      ");*/
-
-		/*for(i=0;i<=count; i++)
-			if(t[i].row == wbuf.ws_row) { // 만약 어떤 거라도 바닥에 떨어지게되면 프로그램 종료
-				endwin();
-				return 0;
-			}*/
-			
-	}
-	endwin();
-	return 0;
+	pthread_join(t1,NULL);
+	free(t);
+	nextlevel();
 }
 
 void move_msg(int signum)
@@ -128,9 +126,9 @@ void move_msg(int signum)
 	char c[5];
 
 	signal(SIGALRM, move_msg);
-	random = (rand()%3)+1; // 약간의 텀을 두고 떨어지게 설정
+	random = (rand()%4)+1; // 약간의 텀을 두고 떨어지게 설정
 	if(random != 1) { // 떨어지는 확률은 66% 만약 random의 값이 1 이아니면 count의 개수를 늘려서 하나더 떨어지게 만듬
-		if(count != TEMP_ARRAY)
+		if(count != NUMBER)
 			count++;
 	}
 	for(i=0;i<count;i++) {
@@ -140,6 +138,7 @@ void move_msg(int signum)
 				mvaddstr(t[j].row,t[j].col,BLANK);
 				t[j].del = 1;
 				k=1;
+				clear1++;
 			}
 
 		}
@@ -178,26 +177,20 @@ void set_cr_noecho_mode()
 	tcsetattr(0, TCSANOW, &ttystate);
 }
 
-void input()
+void *get_msg(void *m)
 {
-	char c;
-
-	for(inputnumber=0; inputnumber<4; inputnumber++)
+	while(1)
 	{
-		str[inputnumber] = getchar();
+		str[strindex] = getchar();
 		mvaddstr(wbuf.ws_row-1,0,str);
+		strindex++;
+		if(strindex==4) {
+			str[strindex] = '\0';
+			strindex=0;
+		}
+		
 	}
-	return ;
 
-}
-
-void enable_signals()
-{
-	int flags;
-
-	fcntl(0, F_SETOWN, getpid());
-	flags = fcntl(0, F_GETFL);
-	fcntl(0, F_SETFL,(flags | O_ASYNC));
 }
 
 void gameover()
@@ -212,4 +205,35 @@ void gameover()
 	endwin();
 	exit(0);
 
+}
+
+void nextlevel()
+{
+	int i;
+	signal(SIGALRM, SIG_IGN);
+	clear1 = 0;
+
+	clear();
+	
+	level++;
+	mvaddstr(wbuf.ws_row/2,wbuf.ws_col/2-5, "3 second later Next level strat!");
+	refresh();
+	sleep(3);
+
+	strindex = 0;	
+	gamestart(level);
+
+}
+
+void gameclear()
+{
+	signal(SIGALRM, SIG_IGN);
+	clear();
+
+	mvaddstr(wbuf.ws_row/2,wbuf.ws_col/2,"Game clear!!");
+	refresh();
+	sleep(2);
+
+	endwin();
+	exit(0);
 }
